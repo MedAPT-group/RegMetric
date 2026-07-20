@@ -6,6 +6,4 @@ Swin Transformer projects, as documented in their source headers. They also
 contain spatial-transformer code attributed in the source to VoxelMorph.
 
 Before publishing this repository, verify the upstream licenses, retain all
-required notices, and choose a compatible license for this repository. The
-copied `GaussianDIR-master` and `voxelmorph-dev` source trees are deliberately
-not included in this clean package.
+required notices, and choose a compatible license for this repository.
