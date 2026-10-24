@@ -3,6 +3,10 @@
 Train an nnInteractive-based perceptual metric on OASIS and visualize spatial
 differences after ANTs SyN registration.
 
+## Example result
+
+![Sagittal comparison](outputs/inference/spatial_difference_sagittal.png)
+
 ## Installation
 
 Use Python 3.10+ and install the appropriate
