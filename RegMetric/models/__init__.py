@@ -1,0 +1,1 @@
+"""nnInteractive perceptual metric."""

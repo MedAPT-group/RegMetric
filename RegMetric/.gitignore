@@ -1,0 +1,41 @@
+# Python and development tools
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local settings and runtime files
+.env
+.env.*
+*.log
+/outputs/
+/nnUNet/
+/datasets/
+/requirements-lock.txt
+/environment-lock.yml
+
+# Download the complete upstream backbone locally; do not publish its files.
+/weights/nnInteractive_v1.0/
+
+# Include only the project metric checkpoint and named example volumes.
+*.pth
+*.pt
+*.ckpt
+*.nii
+*.nii.gz
+!weights/metric/oasis_best.pth
+!picture/fixed.nii.gz
+!picture/moving.nii.gz

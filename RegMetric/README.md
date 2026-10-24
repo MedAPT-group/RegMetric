@@ -1,91 +1,138 @@
-# RegMetric
+# OASIS Registration Risk Maps with nnInteractive
 
-RegMetric contains reusable perceptual-metric and uncertainty-aware components
-for 3D medical image registration. Experimental sweeps, generated figures,
-private dataset paths, cached files, and large checkpoints are excluded from
-this repository.
-
-## Included code
-
-- `regmetric.models`: nnInteractive metric, TransMorph, and TransMorph-Bayes.
-- `regmetric.data`: loaders for OASIS, COPDGene, and L2R Abdomen.
-- `regmetric.utils`: metric losses, TRE helpers, and deformation transforms.
+Train an nnInteractive-based perceptual metric on OASIS and visualize spatial
+differences after ANTs SyN registration.
 
 ## Installation
 
-```bash
-python -m venv .venv
-python -m pip install -U pip
-python -m pip install -e .
-```
-
-The pinned versions in `requirements.txt` are based on the local `regis`
-environment. That environment currently contains the CPU build of PyTorch
-2.8.0 even though CUDA 12.1 packages are present. For GPU training, replace it
-with the CUDA-enabled PyTorch 2.8.0 build appropriate for the host driver, then
-verify that `torch.cuda.is_available()` returns `True`.
-
-Metric losses use all nnInteractive feature stages by default. Pass an explicit
-`target_layers` sequence only when a layer ablation is required.
-
-## Example
-
-```python
-from regmetric.models import NNInteractiveMetric
-
-metric = NNInteractiveMetric(
-    weights_dir="/path/to/nnInteractive_v1.0",
-    nnunet_base="/path/to/nnUNet",  # optional if env vars are already set
-    device="cuda",
-)
-```
-
-Dataset locations and checkpoints must be supplied at runtime; the package does
-not embed machine-specific paths.
-
-## Training the metric
-
-The training entry point freezes the nnInteractive backbone and optimizes only
-the learnable per-stage channel weights. All nnInteractive feature stages are
-used by default. Positives receive small deformations, negatives receive larger
-deformations or use the paired acquisition, and optimization uses
-`softplus(d_positive - d_negative + margin)`.
+Use Python 3.10+ and install the appropriate
+[PyTorch build](https://pytorch.org/get-started/locally/) for your GPU, then run:
 
 ```bash
-python scripts/train_metric.py \
-  --dataset oasis \
-  --data-root /path/to/OASIS \
-  --weights-dir /path/to/nnInteractive_v1.0 \
-  --nnunet-base /path/to/nnUNet \
-  --output-dir outputs/oasis_metric \
-  --device cuda
+python -m pip install -r requirements.txt
 ```
 
-Supported dataset names are `oasis`, `copdgene`, and `l2r-abdomen`.
-Run `python scripts/train_metric.py --help` for the complete configuration.
-The output directory contains `config.json`, `last.pt`, and the checkpoint with
-the lowest training loss as `best.pt`. Load trained channel weights with:
+The dependency list is not an exact lockfile. Keep your working package versions
+when reproducing results. ANTsPy is installed as `antspyx` and imported as `ants`.
+Run the following commands from this repository directory (the original `Reg/`
+folder). Relative input, weight and output paths are resolved against this folder.
 
-```python
-import torch
+## Model weights
 
-checkpoint = torch.load("outputs/oasis_metric/best.pt", map_location="cpu")
-metric.lin_layers.load_state_dict(checkpoint["metric_state_dict"])
+The nnInteractive backbone is **not included**. Download the complete
+`nnInteractive_v1.0` folder from the
+[official model repository](https://huggingface.co/MIC-DKFZ/nnInteractive/tree/main/nnInteractive_v1.0)
+and place it under `weights/`:
+
+```bash
+python -m pip install huggingface_hub
+python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='MIC-DKFZ/nnInteractive', allow_patterns=['nnInteractive_v1.0/**'], local_dir='weights')"
 ```
 
-Pass `--nnunet-base` unless the three nnU-Net path environment variables are
-already configured. Direct inference from a trained-model folder can work
-without them, but nnU-Net will print path warnings.
+Expected files:
 
-## Repository scope
+```text
+weights/nnInteractive_v1.0/dataset.json
+weights/nnInteractive_v1.0/plans.json
+weights/nnInteractive_v1.0/inference_session_class.json
+weights/nnInteractive_v1.0/fold_0/checkpoint_final.pth
+weights/metric/oasis_best.pth
+```
 
-Training sweeps and one-off evaluation scripts from the original `experiments/`
-directory are not included. If exact paper reproduction is required, add a
-small set of reviewed entry points under `scripts/` rather than restoring the
-entire experiment tree.
+Both the backbone and the trained OASIS metric checkpoint are required. Keep all
+model JSON files alongside `fold_0/`. The entire downloaded backbone folder is
+ignored by Git. Inference does not download models automatically.
 
-## License and attribution
+## Inference
 
-A repository license has not been selected yet. Review `THIRD_PARTY.md`, verify
-the licenses of derived components, and add a compatible `LICENSE` file before
-making the repository public.
+Place two OASIS 3D `aligned_norm.nii.gz` volumes at:
+
+```text
+picture/fixed.nii.gz
+picture/moving.nii.gz
+```
+
+Inputs must be 3D NIfTI volumes, not PNG/JPG screenshots. Run:
+
+```bash
+python infer.py --device cuda:0
+```
+
+To select your own images and checkpoint:
+
+```bash
+python infer.py --fixed picture/fixed.nii.gz --moving picture/moving.nii.gz --metric-checkpoint weights/metric/oasis_best.pth --device cuda:0
+```
+
+Use `--device cpu` to select CPU execution, which has not been validated here.
+Omitting `--device` selects CUDA when available, otherwise CPU. Whole-volume
+inference can require substantial GPU memory.
+
+The pipeline performs SyN registration, nnInteractive feature comparison, then
+risk-map visualization. Results are saved under `outputs/inference/`:
+
+```text
+spatial_difference_axial.png
+spatial_difference_coronal.png
+spatial_difference_sagittal.png
+```
+
+Each PNG shows the fixed image, SyN warped moving image, and risk map at the middle
+slice. Maps use the `jet` rainbow colormap with a shared color scale within each
+run. Values represent feature differences, not calibrated probabilities. No
+distance score or NIfTI output is retained; temporary transforms are removed.
+
+Use `--output-dir` to change the destination. Existing PNGs with the same names
+are overwritten. See all options with `python infer.py --help`.
+
+## Training
+
+Obtain the [Neurite OASIS v1.0 collection](https://github.com/adalca/medical-datasets/blob/master/neurite-oasis.md)
+under its data-use terms. The loader expects files matching
+`datasets/OASIS/neurite-oasis.v1.0/OASIS_*/aligned_norm.nii.gz`.
+
+```bash
+python train.py --data-root datasets/OASIS/neurite-oasis.v1.0 --device cuda:0 --batch-size 1 --epochs 500 --lr 0.001
+```
+
+Backbone parameters are frozen; training learns per-stage channel weights. The
+original loss reduction, augmentations, batch-based validation, model mode
+transitions and full backbone forward pass are preserved. Use batch size 1 to
+match the original default. Sorted volumes are split into 70% training and 30%
+validation, using SimpleITK's `(Z, Y, X)` array order and min-max normalization.
+
+Checkpoints are saved under `outputs/training/`. The best model is selected by
+training loss, with early-stopping patience 50. Use new weights with:
+
+```bash
+python infer.py --metric-checkpoint outputs/training/best_train_loss_model.pth --device cuda:0
+```
+
+Training does not overwrite `weights/metric/oasis_best.pth`. Checkpoints contain
+channel weights only, not optimizer state. Seeds are not fixed, and exact original
+package versions have not been provided; bitwise reproducibility is not claimed.
+
+## Acknowledgments
+
+We thank the **nnInteractive team** for publicly releasing their code and pretrained
+model. Our perceptual metric builds on their multi-stage volumetric features.
+
+- [nnInteractive code](https://github.com/MIC-DKFZ/nnInteractive)
+- [Official pretrained model](https://huggingface.co/MIC-DKFZ/nnInteractive)
+- Isensee et al., *nnInteractive: Redefining 3D Promptable Segmentation* (2025),
+  [arXiv:2503.08373](https://arxiv.org/abs/2503.08373).
+
+Please cite nnInteractive when using its backbone in your research. We also thank
+the [ANTs/SyN](https://github.com/ANTsX/ANTsPy) and
+[Neurite/OASIS](https://github.com/adalca/medical-datasets/blob/master/neurite-oasis.md)
+teams for their software and data; follow their citation instructions.
+
+## License
+
+Project-authored source code is released under the [MIT License](LICENSE).
+The separately downloaded nnInteractive backbone is CC BY-NC-SA 4.0 licensed;
+its Python backend is Apache-2.0 licensed. Model weights and OASIS images are not
+relicensed by the source-code MIT license. Follow the upstream model license and
+OASIS data-use terms. The exact source/subject IDs of the local examples and the
+metric checkpoint's distribution policy still need to be recorded before publicly
+redistributing those assets.
