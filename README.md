@@ -38,8 +38,7 @@ weights/metric/oasis_best.pth
 ```
 
 Both the backbone and the trained OASIS metric checkpoint are required. Keep all
-model JSON files alongside `fold_0/`. The entire downloaded backbone folder is
-ignored by Git. Inference does not download models automatically.
+model JSON files alongside `fold_0/`.
 
 ## Inference
 
@@ -77,11 +76,7 @@ spatial_difference_sagittal.png
 
 Each PNG shows the fixed image, SyN warped moving image, and risk map at the middle
 slice. Maps use the `jet` rainbow colormap with a shared color scale within each
-run. Values represent feature differences, not calibrated probabilities. No
-distance score or NIfTI output is retained; temporary transforms are removed.
-
-Use `--output-dir` to change the destination. Existing PNGs with the same names
-are overwritten. See all options with `python infer.py --help`.
+run. Values represent feature differences.
 
 ## Training
 
