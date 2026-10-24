@@ -21,7 +21,6 @@ Thumbs.db
 .env
 .env.*
 *.log
-/outputs/
 /nnUNet/
 /datasets/
 /requirements-lock.txt
