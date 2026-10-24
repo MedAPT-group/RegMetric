@@ -13,9 +13,7 @@ python -m pip install -r requirements.txt
 ```
 
 The dependency list is not an exact lockfile. Keep your working package versions
-when reproducing results. ANTsPy is installed as `antspyx` and imported as `ants`.
-Run the following commands from this repository directory (the original `Reg/`
-folder). Relative input, weight and output paths are resolved against this folder.
+when reproducing results.
 
 ## Model weights
 
@@ -52,7 +50,7 @@ picture/fixed.nii.gz
 picture/moving.nii.gz
 ```
 
-Inputs must be 3D NIfTI volumes, not PNG/JPG screenshots. Run:
+Inputs must be 3D NIfTI volumes. Run:
 
 ```bash
 python infer.py --device cuda:0
@@ -95,11 +93,7 @@ under its data-use terms. The loader expects files matching
 python train.py --data-root datasets/OASIS/neurite-oasis.v1.0 --device cuda:0 --batch-size 1 --epochs 500 --lr 0.001
 ```
 
-Backbone parameters are frozen; training learns per-stage channel weights. The
-original loss reduction, augmentations, batch-based validation, model mode
-transitions and full backbone forward pass are preserved. Use batch size 1 to
-match the original default. Sorted volumes are split into 70% training and 30%
-validation, using SimpleITK's `(Z, Y, X)` array order and min-max normalization.
+Backbone parameters are frozen; training learns per-stage channel weights.
 
 Checkpoints are saved under `outputs/training/`. The best model is selected by
 training loss, with early-stopping patience 50. Use new weights with:
@@ -109,8 +103,7 @@ python infer.py --metric-checkpoint outputs/training/best_train_loss_model.pth -
 ```
 
 Training does not overwrite `weights/metric/oasis_best.pth`. Checkpoints contain
-channel weights only, not optimizer state. Seeds are not fixed, and exact original
-package versions have not been provided; bitwise reproducibility is not claimed.
+channel weights only, not optimizer state. Seeds are not fixed.
 
 ## Acknowledgments
 
@@ -130,9 +123,3 @@ teams for their software and data; follow their citation instructions.
 ## License
 
 Project-authored source code is released under the [MIT License](LICENSE).
-The separately downloaded nnInteractive backbone is CC BY-NC-SA 4.0 licensed;
-its Python backend is Apache-2.0 licensed. Model weights and OASIS images are not
-relicensed by the source-code MIT license. Follow the upstream model license and
-OASIS data-use terms. The exact source/subject IDs of the local examples and the
-metric checkpoint's distribution policy still need to be recorded before publicly
-redistributing those assets.
